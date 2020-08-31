@@ -32,27 +32,28 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         auth
-            .userDetailsService(userDetailsService)
-            .passwordEncoder(passwordEncoder);
+                .userDetailsService(userDetailsService)
+                .passwordEncoder(passwordEncoder);
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        //@ formatter:off
         http
-            .csrf()
-                .disable()
-            .authorizeRequests()
-                .antMatchers("/admin").hasRole("admin")
-                .antMatchers("/user").hasAnyRole("admin", "user")
-                .antMatchers("/auth/**").permitAll()
-                .and()
-            .exceptionHandling()
-                .authenticationEntryPoint((req, rsp, e) -> rsp.sendError(HttpServletResponse.SC_UNAUTHORIZED))
-                .and()
-            .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-            .addFilterBefore(new JwtValidationFilter(jwtService, userDetailsService), UsernamePasswordAuthenticationFilter.class);
+                .csrf().disable()
+                .authorizeRequests()
+                    .antMatchers("/admin").hasRole("admin")
+                    .antMatchers("/user").hasAnyRole("admin", "user")
+                    .antMatchers("/auth/**").permitAll()
+                    .and()
+                .exceptionHandling()
+                    .authenticationEntryPoint((req, rsp, e) -> rsp.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                    .and()
+                .sessionManagement()
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                    .and()
+                .addFilterBefore(new JwtValidationFilter(jwtService, userDetailsService), UsernamePasswordAuthenticationFilter.class);
+        //@ formatter:on
     }
 
     @Override

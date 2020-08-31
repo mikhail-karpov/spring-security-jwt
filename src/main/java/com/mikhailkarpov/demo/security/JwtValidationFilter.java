@@ -4,7 +4,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -13,6 +12,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Optional;
 
 public class JwtValidationFilter extends OncePerRequestFilter {
 
@@ -28,39 +28,30 @@ public class JwtValidationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        try {
-            String jwt = null;
-            String username = null;
+        Optional<String> jwt = getJwt(request);
 
-            String authorizationHeader = request.getHeader("Authorization");
-            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-                jwt = authorizationHeader.replace("Bearer ", "");
-                username = jwtService.getUsername(jwt);
-                System.out.println("extracted name: " + username);
-            }
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                if (jwtService.isValid(jwt, userDetails)) {
-                    System.out.println("valid");
-                    UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
-                            new UsernamePasswordAuthenticationToken(userDetails.getUsername(), userDetails.getPassword(), userDetails.getAuthorities());
-                    usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
-                }
-                else {
-                    System.out.println("not valid");
-                }
-            }
-
-        } catch (JwtValidationException | UsernameNotFoundException e) {
-            logger.warn("JWT cannot be trusted", e);
-
-        } finally {
-            filterChain.doFilter(request, response);
+        if (jwt.isPresent()) {
+            UsernamePasswordAuthenticationToken authentication = authenticate(jwt.get());
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private Optional<String> getJwt(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader("Authorization");
+
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            String jwt = authorizationHeader.substring(7);
+            return Optional.of(jwt);
+        }
+        return Optional.empty();
+    }
+
+    private UsernamePasswordAuthenticationToken authenticate(String jwt) {
+        String username = jwtService.validateAndGetUsername(jwt);
+        UserDetails user = userDetailsService.loadUserByUsername(username);
+        return new UsernamePasswordAuthenticationToken(username, null, user.getAuthorities());
     }
 }

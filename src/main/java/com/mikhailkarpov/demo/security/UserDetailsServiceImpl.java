@@ -6,6 +6,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+
 @Service("userDetailsService")
 public class UserDetailsServiceImpl extends InMemoryUserDetailsManager {
 
@@ -13,9 +15,9 @@ public class UserDetailsServiceImpl extends InMemoryUserDetailsManager {
 
     public UserDetailsServiceImpl(PasswordEncoder passwordEncoder) {
         this.passwordEncoder = passwordEncoder;
-        createUsers();
     }
 
+    @PostConstruct
     private void createUsers() {
         UserDetails admin = User
                 .withUsername("admin")
